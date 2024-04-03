@@ -1,0 +1,96 @@
+{
+  "cliente": [
+    {
+      "name": "Juan",
+      "surname": "Perez",
+      "id": 12345678,
+      "dir": "Calle 1234"
+    },
+    {
+        "name": "Claudia",
+        "surname": "Morena",
+        "id": 9792046,
+        "dir": "La Lago"
+    },
+    {
+      "name": "Pedro",
+      "surname": "Perez",
+      "id": 87654321,
+      "dir": "Calle 4321"
+    },
+    {
+      "name": "Alfredo",
+      "surname": "Santana",
+      "id": 11111111,
+      "dir": "Calle 1111"
+    },
+    {
+      "name": "Marlon",
+      "surname": "EsGay",
+      "id": 22222222,
+      "dir": "Calle 2222"
+    },
+    {
+      "name": "Rafa",
+      "surname": "EsGay",
+      "id": 33333333,
+      "dir": "Calle 3333"
+    },
+    {
+      "name": "Jose",
+      "surname": "EsGay",
+      "id": 44444444,
+      "dir": "Calle 4444"
+    },
+    {
+      "name": "Andres",
+      "surname": "EsGay",
+      "id": 55555555,
+      "dir": "Calle 5555"
+    },
+    {
+      "name": "Gabriel",
+      "surname": "Urdaneta",
+      "id": 66666666,
+      "dir": "Calle 6666"
+    },
+    {
+      "name": "Simon",
+      "surname": "Bolivar",
+      "id": 77777777,
+      "dir": "Calle 7777"
+    },
+    {
+      "name": "Rafael",
+      "surname": "Urdaneta",
+      "id": 88888888,
+      "dir": "Calle 8888"
+    },
+    {
+      "name": "Jose",
+      "surname": "Paez",
+      "id": 99999999,
+      "dir": "Calle 9999"
+    },
+    {
+      "name": "Miguel",
+      "surname": "Cabrera",
+      "id": 10101010,
+      "dir": "Calle 1010"
+    }
+  ],
+  "producto": [
+    {
+      "name": "Tenedor",
+      "code": 12345678,
+      "price": 10,
+      "photoUrl": "https://unomasuno.pe/wp-content/uploads/2021/06/i-h022-2.png"
+    },
+    {
+      "name": "Silla",
+      "code": 87654321,
+      "price": 20,
+      "photoUrl": "https://mueblesbima.com/content/images/thumbs/0001926_silla-andrea_300.jpeg"
+    }
+  ]
+}
