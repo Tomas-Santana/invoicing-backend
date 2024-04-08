@@ -16,6 +16,8 @@ def search_product(param: str):
     
     result = cur.fetchall()
     
+    cur.close()
+    
     return json.loads(json.dumps(result))
 
 def general_search(table: str, field: str, value: str) -> list[dict]:
@@ -33,7 +35,39 @@ def general_search(table: str, field: str, value: str) -> list[dict]:
         
     logging.debug(cur.query)
     result = cur.fetchall()
+    cur.close()
     return json.loads(json.dumps(result))
+
+def create_client(name: str, surname: str, dir: str, pid: str, pid_prefix: str) -> dict:
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    
+    # check if client already exists (pid_prefix + pid is unique)
+    cur.execute("SELECT * FROM client WHERE pid = %s", (pid, ))
+    
+    result = cur.fetchone()
+    
+    response = {}
+    
+    if result is not None:
+        # update client
+        query = sql.SQL("UPDATE client SET name = %s, surname = %s, dir = %s WHERE pid = %s AND pid_prefix = %s RETURNING *")
+        
+        cur.execute(query, (name, surname, dir, pid, pid_prefix))
+        
+        response = {"action": "update"}
+    else:
+        # insert new client
+        query = sql.SQL("INSERT INTO client (name, surname, dir, pid, pid_prefix) VALUES (%s, %s, %s, %s, %s) RETURNING *")
+        cur.execute(query, (name, surname, dir, pid, pid_prefix))
+        
+        response = {"action": "insert"}
+    
+    result = cur.fetchone()
+    # TODO: add commit after testing
+    # conn.commit()
+    cur.close()
+    
+    return response
 
 
 
