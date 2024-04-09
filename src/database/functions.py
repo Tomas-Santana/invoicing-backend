@@ -273,32 +273,45 @@ def search_invoice(field: str, value: str) -> list[dict]:
     cur = conn.cursor(cursor_factory=RealDictCursor)
     
     if (field == "invoice_id"):
-        query == sql.SQL("""
-            SELECT i.id_invoice as invoice_id, i.date, c.name, c.surname, c.pid_prefix, c.pid 
+        query = sql.SQL("""
+            SELECT i.id_invoice as invoice_id, i.date, c.name, c.surname, c.pid_prefix, c.pid, sum(p.amount) as total, i.void 
             FROM invoice i 
             JOIN client c ON i.id_client = c.id_client
-            WHERE i.id_invoice = %s""")
+            JOIN payment p ON i.id_invoice = p.id_invoice
+            WHERE i.id_invoice = %s
+            GROUP BY i.id_invoice, c.name, c.surname, c.pid_prefix, c.pid, i.date
+            """)
+        
         cur.execute(query, (value,))
     elif (field == "name"):
         query = sql.SQL("""
-            SELECT i.id_invoice as invoice_id, i.date, c.name, c.surname, c.pid_prefix, c.pid 
+            SELECT i.id_invoice as invoice_id, i.date, c.name, c.surname, c.pid_prefix, c.pid, sum(p.amount) as total, i.void
             FROM invoice i 
             JOIN client c ON i.id_client = c.id_client
-            WHERE UPPER(CONCAT(c.name, ' ', c.surname)) LIKE %s""")
+            JOIN payment p ON i.id_invoice = p.id_invoice
+            WHERE UPPER(CONCAT(c.name, ' ', c.surname)) LIKE %s
+            GROUP BY i.id_invoice, c.name, c.surname, c.pid_prefix, c.pid, i.date
+            """)
         cur.execute(query, (f"%%{value.upper()}%%",))
     elif (field == "pid"):
         query = sql.SQL("""
-            SELECT i.id_invoice as invoice_id, i.date, c.name, c.surname, c.pid_prefix, c.pid 
+            SELECT i.id_invoice as invoice_id, i.date, c.name, c.surname, c.pid_prefix, c.pid, sum(p.amount) as total, i.void
             FROM invoice i 
             JOIN client c ON i.id_client = c.id_client
-            WHERE c.pid = %s""")
+            JOIN payment p ON i.id_invoice = p.id_invoice
+            WHERE c.pid = %s
+            GROUP BY i.id_invoice, c.name, c.surname, c.pid_prefix, c.pid, i.date
+            """)
         cur.execute(query, (value,))
     elif (field == "date"):
         query = sql.SQL("""
-            SELECT i.id_invoice as invoice_id, i.date, c.name, c.surname, c.pid_prefix, c.pid 
-            FROM invoice i 
+            SELECT i.id_invoice as invoice_id, i.date, c.name, c.surname, c.pid_prefix, c.pid, sum(p.amount) as total, i.void
+            FROM invoice i  
             JOIN client c ON i.id_client = c.id_client
-            WHERE i.date = %s""")
+            JOIN payment p ON i.id_invoice = p.id_invoice
+            WHERE i.date = %s
+            GROUP BY i.id_invoice, c.name, c.surname, c.pid_prefix, c.pid, i.date
+            """)
         cur.execute(query, (value,))
     
     result = cur.fetchall()
@@ -309,7 +322,81 @@ def search_invoice(field: str, value: str) -> list[dict]:
     
     return json.loads(json.dumps(result)) 
 
-print(search_invoice("name", "tomas"))
+def get_closing_statement(date: str):
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    
+    # get all invoices from the date
+    invoices = search_invoice("date", date)
+    
+    # get the day total
+    day_total = sum([invoice['total'] for invoice in invoices if not invoice['void']])
+    
+    
+    # get how much was paid by each method
+    query = sql.SQL("""
+        SELECT pm.name as method, sum(p.amount) as total
+        FROM payment p
+        JOIN payment_method pm ON p.id_method = pm.id_method
+        JOIN invoice i ON p.id_invoice = i.id_invoice
+        WHERE i.date = %s AND i.void = FALSE
+        GROUP BY pm.name
+        """)
+    cur.execute(query, (date,))
+    methods = cur.fetchall()
+    
+    # get how much was paid by each bank
+    
+    query = sql.SQL("""
+        SELECT b.name as bank, sum(p.amount) as total
+        FROM payment p
+        JOIN bank b ON p.id_bank = b.id_bank
+        JOIN invoice i ON p.id_invoice = i.id_invoice
+        WHERE i.date = %s AND i.void = FALSE
+        GROUP BY b.name
+    """)
+    cur.execute(query, (date,))
+    banks = cur.fetchall()
+    
+    # get how much was paid in cash
+    query = sql.SQL("""
+        SELECT sum(p.amount) as total
+        FROM payment p
+        JOIN payment_method pm ON p.id_method = pm.id_method
+        JOIN invoice i ON p.id_invoice = i.id_invoice
+        WHERE i.date = %s AND pm.name = 'EFECTIVO' AND i.void = FALSE
+    """)
+        
+    cur.execute(query, (date,))
+    cash = cur.fetchone()
+    if cash['total'] is not None:
+        banks.append({"bank": "EFECTIVO", "total": cash['total']})
+    
+    # get how many units of each product were sold
+    query = sql.SQL("""
+        SELECT p.name, sum(ip.quantity) as sold, sum(ip.quantity * p.price) as total
+        FROM invoice_product ip
+        JOIN product p ON ip.code_product = p.code
+        JOIN invoice i ON ip.id_invoice = i.id_invoice
+        WHERE i.date = %s AND i.void = FALSE
+        GROUP BY p.name
+    """)
+    cur.execute(query, (date,))
+    products = cur.fetchall()
+    
+    # build the closing statement
+    closing_statement = {
+        "date": date,
+        "day_total": day_total,
+        "methods": methods,
+        "banks": banks,
+        "products": products
+    }
+    
+    cur.close()
+    
+    return json.loads(json.dumps(closing_statement))
+
+    
     
 
 

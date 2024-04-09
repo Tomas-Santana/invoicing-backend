@@ -151,7 +151,7 @@ def get_invoice():
 @app.route('/searchInvoice', methods=['POST', 'GET'])
 def search_invoice():
     if request.method == 'GET':
-        response = jsonify({'result': db.search_invoice('name', 'toma')})
+        response = jsonify({'result': db.search_invoice('name', 'Tomas')})
         return response
     
     data = request.get_json()
@@ -174,6 +174,32 @@ def search_invoice():
         return response
     
     return jsonify({'result': result})
+
+@app.route('/getClosingStatement', methods=['POST', 'GET'])
+def get_closing_statement():
+    if request.method == 'GET':
+        response = jsonify({'result': db.get_closing_statement('2024-04-09')})
+        return response
+    
+    date = request.get_json().get('date', None)
+    
+    if date is None:
+        logging.debug('missing date')
+        response = jsonify({'message': 'Invalid request'})
+        response.status_code = 400
+        return response
+    
+    try:
+        result = db.get_closing_statement(date)
+    except Exception as e:
+        logging.error("other Error", e)
+        response = jsonify({'message': 'Invalid request', 'result': []})
+        response.status_code = 400
+        return response
+    
+    return jsonify({'result': result})
+    
+    
         
 
 if __name__ == '__main__':
