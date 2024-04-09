@@ -389,7 +389,11 @@ def get_closing_statement(date: str):
         "day_total": day_total,
         "methods": methods,
         "banks": banks,
-        "products": products
+        "products": products,
+        "invoices": invoices,
+        "invoice_quantity": len(invoices),
+        "average_invoice": day_total/len(invoices) if len(invoices) else "N/A"
+        
     }
     
     cur.close()
