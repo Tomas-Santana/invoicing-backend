@@ -122,8 +122,59 @@ def create_invoice():
         return response
     
     return jsonify({'result': result})
-        
 
+@app.route('/getInvoice', methods=['POST', 'GET'])
+def get_invoice():
+    if request.method == 'GET':
+        response = jsonify({'result': db.get_invoice(100)})
+        return response
+    
+    data = request.get_json()
+    invoice_id = int(data.get('invoice_id', None))
+    
+    if invoice_id is None:
+        response = jsonify({'message': 'Invalid request'})
+        response.status_code = 400
+        return response
+    
+    try:
+        result = db.get_invoice(invoice_id)
+    except Exception as e:
+        logging.error(e)
+        response = jsonify({'message': 'Invalid request', 'result': []})
+        response.status_code = 400
+        return response
+    
+    return jsonify({'result': result})
+
+
+@app.route('/searchInvoice', methods=['POST', 'GET'])
+def search_invoice():
+    if request.method == 'GET':
+        response = jsonify({'result': db.search_invoice('name', 'toma')})
+        return response
+    
+    data = request.get_json()
+    field = data.get('field', None)
+    value = data.get('value', None)
+    
+    valid_fields = ["name", "pid", "invoice_id", "date"]
+    
+    if field is None or value is None or field not in valid_fields:
+        response = jsonify({'message': 'Invalid request'})
+        response.status_code = 400
+        return response
+    
+    try:
+        result = db.search_invoice(field, value)
+    except Exception as e:
+        logging.error(e)
+        response = jsonify({'message': 'Invalid request', 'result': []})
+        response.status_code = 400
+        return response
+    
+    return jsonify({'result': result})
+        
 
 if __name__ == '__main__':
     app.run(debug=True)

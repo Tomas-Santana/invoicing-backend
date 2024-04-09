@@ -214,7 +214,7 @@ def get_invoice(invoice_id: int) -> dict:
     # build the invoice object
     
     invoice = {
-        "id_invoice": result['id_invoice'],
+        "invoice_id": result['id_invoice'],
         "date": result['date'].strftime('%Y-%m-%d'),
         "client": {},
         "products": [],
@@ -274,28 +274,28 @@ def search_invoice(field: str, value: str) -> list[dict]:
     
     if (field == "invoice_id"):
         query == sql.SQL("""
-            SELECT i.id_invoice, i.date, c.name, c.surname, c.pid_prefix, c.pid 
+            SELECT i.id_invoice as invoice_id, i.date, c.name, c.surname, c.pid_prefix, c.pid 
             FROM invoice i 
             JOIN client c ON i.id_client = c.id_client
             WHERE i.id_invoice = %s""")
         cur.execute(query, (value,))
     elif (field == "name"):
         query = sql.SQL("""
-            SELECT i.id_invoice, i.date, c.name, c.surname, c.pid_prefix, c.pid 
+            SELECT i.id_invoice as invoice_id, i.date, c.name, c.surname, c.pid_prefix, c.pid 
             FROM invoice i 
             JOIN client c ON i.id_client = c.id_client
             WHERE UPPER(CONCAT(c.name, ' ', c.surname)) LIKE %s""")
         cur.execute(query, (f"%%{value.upper()}%%",))
     elif (field == "pid"):
         query = sql.SQL("""
-            SELECT i.id_invoice, i.date, c.name, c.surname, c.pid_prefix, c.pid 
+            SELECT i.id_invoice as invoice_id, i.date, c.name, c.surname, c.pid_prefix, c.pid 
             FROM invoice i 
             JOIN client c ON i.id_client = c.id_client
             WHERE c.pid = %s""")
         cur.execute(query, (value,))
     elif (field == "date"):
         query = sql.SQL("""
-            SELECT i.id_invoice, i.date, c.name, c.surname, c.pid_prefix, c.pid 
+            SELECT i.id_invoice as invoice_id, i.date, c.name, c.surname, c.pid_prefix, c.pid 
             FROM invoice i 
             JOIN client c ON i.id_client = c.id_client
             WHERE i.date = %s""")
