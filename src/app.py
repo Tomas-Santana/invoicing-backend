@@ -51,7 +51,6 @@ def create_client():
     pid = data.get('pid', None)
     pid_prefix = data.get('pid_prefix', None)
 
-    "{'name': 'Juan', 'surname': 'Perez', 'pid_prefix': 'E', 'pid': '12345678', 'dir': 'La Virginia'}"
     logging.debug(data)
     if name is None or surname is None or dir is None or pid is None or pid_prefix is None:
         response = jsonify({'message': 'Invalid request'})
@@ -67,6 +66,63 @@ def create_client():
         return response
 
     return jsonify({'result': result})
+
+@app.route('/createInvoice', methods=['POST'])
+def create_invoice():
+    invoice = request.get_json()
+    
+    prettyData = json.dumps(invoice, indent=4)
+    logging.debug(prettyData)
+    
+    if invoice is None:
+        response = jsonify({'message': 'Invalid request'})
+        response.status_code = 400
+        return response
+    
+    # validate that invoice has all required fields (client, products, payments)
+    
+    if 'client' not in invoice or 'products' not in invoice or 'payments' not in invoice:
+        logging.debug('missing fields')
+        response = jsonify({'message': 'Invalid request'})
+        response.status_code = 400
+        return response
+    
+    # validate that client has all required fields (name, surname, dir, pid, pid_prefix)
+    
+    if 'name' not in invoice['client'] or 'surname' not in invoice['client'] or 'dir' not in invoice['client'] or 'pid' not in invoice['client'] or 'pid_prefix' not in invoice['client']:
+        logging.debug('missing client fields')
+        response = jsonify({'message': 'Invalid request'})
+        response.status_code = 400
+        return response
+    
+    # validate that products has all required fields (name, code, quantity)
+    
+    for product in invoice['products']:
+        if 'name' not in product or 'code' not in product or 'quantity' not in product:
+            logging.debug('missing product fields')
+            response = jsonify({'message': 'Invalid request'})
+            response.status_code = 400
+            return response
+    
+    # validate that payments has all required fields (method, amount)
+    
+    for payment in invoice['payments']:
+        if 'method' not in payment or 'amount' not in payment:
+            logging.debug('missing payment fields')
+            response = jsonify({'message': 'Invalid request'})
+            response.status_code = 400
+            return response
+    
+    try:
+        result = db.create_invoice(invoice)
+    except Exception as e:
+        logging.error("Error creating", e)
+        response = jsonify({'message': 'Invalid request', 'result': []})
+        response.status_code = 400
+        return response
+    
+    return jsonify({'result': result})
+        
 
 
 if __name__ == '__main__':
