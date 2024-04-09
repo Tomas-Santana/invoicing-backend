@@ -55,13 +55,13 @@ def create_client(name: str, surname: str, dir: str, pid: str, pid_prefix: str) 
         
         cur.execute(query, (name, surname, dir, pid, pid_prefix))
         
-        response = {"action": "update"}
+        response = {"action": "update", "client_id": result['id_client']}
     else:
         # insert new client
         query = sql.SQL("INSERT INTO client (name, surname, dir, pid, pid_prefix) VALUES (%s, %s, %s, %s, %s) RETURNING *")
         cur.execute(query, (name, surname, dir, pid, pid_prefix))
         
-        response = {"action": "insert"}
+        response = {"action": "insert", "client_id": cur.fetchone()['id_client']}
     
     result = cur.fetchone()
     # TODO: add commit after testing
@@ -70,33 +70,6 @@ def create_client(name: str, surname: str, dir: str, pid: str, pid_prefix: str) 
     
     return response
 
-# export type Payment = {
-#   method: string;
-#   bank?: string;
-#   amount: number;
-# };
-
-# export type ProductEntry = {
-#   name: string;
-#   code: string;
-#   photourl: string;
-#   price: number;
-#   quantity: number;
-# };
-
-# export type Client = {
-#   name: string;
-#   surname: string;
-#   pid_prefix: string;
-#   pid: string;
-#   dir: string;
-# };
-
-# export type Invoice = {
-#   client: Client;
-#   products: ProductEntry[];
-#   payments: Payment[];
-# };
 
 invoice = {
     "client": {
@@ -146,7 +119,7 @@ def get_method_id(method: str) -> int:
     return result['id_method']
 
 def get_bank_id(bank: str) -> int:
-    if (bank == "N/A"):
+    if (bank == ""):
         return None
     cur = conn.cursor(cursor_factory=RealDictCursor)
     
@@ -165,6 +138,19 @@ def get_bank_id(bank: str) -> int:
     
     return result.get('id_bank', None)
 
+def get_client_id(pid: str, pid_prefix: str) -> int:
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    
+    cur.execute("SELECT id_client FROM client WHERE pid = %s AND pid_prefix = %s", (pid, pid_prefix))
+    
+    result = cur.fetchone()
+    cur.close()
+    
+    if result is None:
+        return None
+    
+    return result['id_client']
+
 def create_invoice(invoice: dict) -> dict:
     cur = conn.cursor(cursor_factory=RealDictCursor)
     today = datetime.datetime.now().strftime('%Y-%m-%d')
@@ -172,7 +158,14 @@ def create_invoice(invoice: dict) -> dict:
     
     invoice_query = sql.SQL("INSERT INTO invoice (date, id_client) VALUES (%s, %s) RETURNING id_invoice")
     
-    cur.execute(invoice_query, (today, 1))
+    client_id = get_client_id(invoice['client']['pid'], invoice['client']['pid_prefix'])
+    
+    if client_id is None:
+        client_op = create_client(invoice['client']['name'], invoice['client']['surname'], invoice['client']['dir'], invoice['client']['pid'], invoice['client']['pid_prefix'])
+        
+        client_id = client_op['client_id']
+        
+    cur.execute(invoice_query, (today, client_id))
     
     invoice_id = cur.fetchone()['id_invoice']
     print(invoice_id)
@@ -206,13 +199,120 @@ def create_invoice(invoice: dict) -> dict:
         return {"message": "Invalid request"}
     
     cur.close()
+    # conn.commit()
     print({"message": "Invoice created successfully", "invoice_id": invoice_id})
     return {"message": "Invoice created successfully", "invoice_id": invoice_id}
 
-
-
-create_invoice(invoice)
+def get_invoice(invoice_id: int) -> dict:
+    cur = conn.cursor(cursor_factory=RealDictCursor)
     
+    query = sql.SQL("SELECT * FROM invoice WHERE id_invoice = %s")
+    cur.execute(query, (invoice_id,))
+    
+    result = cur.fetchone()
+    
+    # build the invoice object
+    
+    invoice = {
+        "id_invoice": result['id_invoice'],
+        "date": result['date'].strftime('%Y-%m-%d'),
+        "client": {},
+        "products": [],
+        "payments": []
+    }
+    
+    # get client info
+    client_query = sql.SQL("SELECT * FROM client WHERE id_client = %s")
+    cur.execute(client_query, (result['id_client'],))
+    
+    client = cur.fetchone()
+    
+    invoice['client'] = {
+        "name": client['name'],
+        "surname": client['surname'],
+        "dir": client['dir'],
+        "pid": client['pid'],
+        "pid_prefix": client['pid_prefix']
+    }
+    
+    # get products info
+    products_query = sql.SQL("SELECT p.name, p.code, p.price, iv.quantity, p.photourl FROM invoice i join invoice_product iv using (id_invoice) join product p on iv.code_product=p.code WHERE id_invoice=%s")
+    
+    cur.execute(products_query, (invoice_id,))
+    
+    products = cur.fetchall()
+    
+    for product in products:
+        invoice['products'].append({
+            "name": product['name'],
+            "code": product['code'],
+            "price": product['price'],
+            "quantity": product['quantity'],
+            "photourl": product['photourl']
+        })
+    
+    # get payments info
+    payments_query = sql.SQL("SELECT pm.name as method, b.name as bank, p.amount FROM payment p join payment_method pm on p.id_method=pm.id_method left join bank b on p.id_bank=b.id_bank WHERE id_invoice=%s")
+    
+    cur.execute(payments_query, (invoice_id,))
+    
+    payments = cur.fetchall()
+    
+    for payment in payments:
+        invoice['payments'].append({
+            "method": payment['method'],
+            "bank": payment['bank'] if payment['bank'] else "",
+            "amount": payment['amount']
+        })
+    
+    cur.close()
+    
+    return json.loads(json.dumps(invoice))
+
+def search_invoice(field: str, value: str) -> list[dict]:
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    
+    if (field == "invoice_id"):
+        query == sql.SQL("""
+            SELECT i.id_invoice, i.date, c.name, c.surname, c.pid_prefix, c.pid 
+            FROM invoice i 
+            JOIN client c ON i.id_client = c.id_client
+            WHERE i.id_invoice = %s""")
+        cur.execute(query, (value,))
+    elif (field == "name"):
+        query = sql.SQL("""
+            SELECT i.id_invoice, i.date, c.name, c.surname, c.pid_prefix, c.pid 
+            FROM invoice i 
+            JOIN client c ON i.id_client = c.id_client
+            WHERE UPPER(CONCAT(c.name, ' ', c.surname)) LIKE %s""")
+        cur.execute(query, (f"%%{value.upper()}%%",))
+    elif (field == "pid"):
+        query = sql.SQL("""
+            SELECT i.id_invoice, i.date, c.name, c.surname, c.pid_prefix, c.pid 
+            FROM invoice i 
+            JOIN client c ON i.id_client = c.id_client
+            WHERE c.pid = %s""")
+        cur.execute(query, (value,))
+    elif (field == "date"):
+        query = sql.SQL("""
+            SELECT i.id_invoice, i.date, c.name, c.surname, c.pid_prefix, c.pid 
+            FROM invoice i 
+            JOIN client c ON i.id_client = c.id_client
+            WHERE i.date = %s""")
+        cur.execute(query, (value,))
+    
+    result = cur.fetchall()
+    cur.close()
+    
+    for r in result:
+        r['date'] = r['date'].strftime('%Y-%m-%d')
+    
+    return json.loads(json.dumps(result)) 
+
+print(search_invoice("name", "tomas"))
+    
+
+
     
     
     
