@@ -223,7 +223,8 @@ def get_invoice(invoice_id: int) -> dict:
         "date": result['date'].strftime('%Y-%m-%d'),
         "client": {},
         "products": [],
-        "payments": []
+        "payments": [],
+        "void": result['void']
     }
     
     # get client info
@@ -433,7 +434,9 @@ def get_closing_statement(date: str):
     
     return json.loads(json.dumps(closing_statement))
 
-def void_invoice(invoice_id: int):
+def void_invoice(invoice_id: int | str):
+    if type(invoice_id) == str:
+        invoice_id = int(invoice_id)
     cur = conn.cursor(cursor_factory=RealDictCursor)
     
     query = sql.SQL("""
@@ -448,8 +451,7 @@ def void_invoice(invoice_id: int):
 
 def close():
     cur = conn.cursor(cursor_factory=RealDictCursor)
-    
-    
+
     # only close if closing hasn't happened today
     today = datetime.datetime.now().strftime('%Y-%m-%d')
     closing_time = get_closing_time(today)

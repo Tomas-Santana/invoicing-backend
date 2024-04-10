@@ -200,10 +200,10 @@ def get_closing_statement():
     
     return jsonify({'result': result})
 
-@app.get('/voidInvoice')
+@app.post('/voidInvoice')
 def void_invoice():
-    invoice_id = request.args.get('invoice_id', None)
-    
+    invoice_id = request.get_json().get('invoice_id', None)
+    logging.debug(invoice_id)
     if invoice_id is None:
         response = jsonify({'message': 'Invalid request'})
         response.status_code = 400
