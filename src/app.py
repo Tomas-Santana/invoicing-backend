@@ -15,8 +15,12 @@ def hello():
     return jsonify({'result': "Hello World"})
 
 
-@app.route('/search', methods=['POST'])
+@app.route('/search', methods=['POST', 'GET'])
 def search():
+    
+    if request.method == 'GET':
+        response = jsonify({'result': db.general_search('client', 'name', 'Tomas')})
+        return response
 
     data = request.get_json()
 

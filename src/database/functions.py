@@ -159,8 +159,6 @@ def create_invoice(invoice: dict) -> dict:
     closing_time = get_closing_time(today)
     if closing_time != "":
         return {"message": "Closing already happened", "insert": False}
-        
-    
     
     invoice_query = sql.SQL("INSERT INTO invoice (date, id_client) VALUES (%s, %s) RETURNING id_invoice")
     
@@ -200,12 +198,12 @@ def create_invoice(invoice: dict) -> dict:
     total_products = sum([product['price'] * product['quantity'] for product in invoice['products']])*1.1
     total_payments = sum([payment['amount'] for payment in invoice['payments']])
     
-    if total_products != total_payments:
+    if round(total_products, 2) != round(total_payments, 2):
         conn.rollback()
         return {"message": "Invalid request"}
     
     cur.close()
-    # conn.commit()
+    conn.commit()
     return {"message": "Invoice created successfully", "invoice_id": invoice_id, "insert": True}
 
 def get_invoice(invoice_id: int) -> dict:
@@ -417,6 +415,8 @@ def get_closing_statement(date: str):
     cur.execute(query, (date,))
     products = cur.fetchall()
     
+    non_void_invoices = [invoice for invoice in invoices if not invoice['void']]
+    
     # build the closing statement
     closing_statement = {
         "date": date,
@@ -425,8 +425,8 @@ def get_closing_statement(date: str):
         "banks": banks,
         "products": products,
         "invoices": invoices,
-        "invoice_quantity": len(invoices),
-        "average_invoice": day_total/len(invoices) if len(invoices) else "",
+        "invoice_quantity": len(non_void_invoices),
+        "average_invoice": day_total/len(non_void_invoices) if len(non_void_invoices) else "",
         "closing_time": closing_time, 
     }
     
