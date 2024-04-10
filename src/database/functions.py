@@ -320,7 +320,33 @@ def search_invoice(field: str, value: str) -> list[dict]:
     for r in result:
         r['date'] = r['date'].strftime('%Y-%m-%d')
     
-    return json.loads(json.dumps(result)) 
+    return json.loads(json.dumps(result))
+
+
+def get_closing_time(date: str):
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    
+    query = sql.SQL("""
+        SELECT datetime from closing where datetime between %s and %s
+        """ 
+    )
+    
+    cur.execute(query, (f"{date} 00:00:00", f"{date} 23:59:59"))
+    
+    result = cur.fetchone()
+    
+    cur.close()
+    
+    
+    if result is None:
+        # if its not today, return the end of the day
+        if date != datetime.datetime.now().strftime('%Y-%m-%d'):
+            return f"{date} 23:59:59"
+        else:
+            return ""
+    
+    return result['datetime'].strftime('%Y-%m-%d %H:%M:%S')
+
 
 def get_closing_statement(date: str):
     cur = conn.cursor(cursor_factory=RealDictCursor)
@@ -331,6 +357,8 @@ def get_closing_statement(date: str):
     # get the day total
     day_total = sum([invoice['total'] for invoice in invoices if not invoice['void']])
     
+    # get closing time
+    closing_time = get_closing_time(date)
     
     # get how much was paid by each method
     query = sql.SQL("""
@@ -392,15 +420,27 @@ def get_closing_statement(date: str):
         "products": products,
         "invoices": invoices,
         "invoice_quantity": len(invoices),
-        "average_invoice": day_total/len(invoices) if len(invoices) else "N/A"
-        
+        "average_invoice": day_total/len(invoices) if len(invoices) else "",
+        "closing_time": closing_time, 
     }
     
     cur.close()
     
     return json.loads(json.dumps(closing_statement))
 
+def void_invoice(invoice_id: int):
+    cur = conn.cursor(cursor_factory=RealDictCursor)
     
+    query = sql.SQL("""
+        UPDATE invoice SET void = TRUE WHERE id_invoice = %s
+    """)
+    
+    cur.execute(query, (invoice_id,))
+    conn.commit()
+    cur.close()
+    
+    return {"message": "Invoice voided successfully"}
+
     
 
 

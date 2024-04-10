@@ -71,7 +71,7 @@ ALTER TABLE public.bank_payment_method OWNER TO postgres;
 --
 
 CREATE TABLE public.client (
-    id_cliente integer NOT NULL,
+    id_client integer NOT NULL,
     pid character varying(30),
     dir character varying(100),
     name character varying(50),
@@ -101,7 +101,41 @@ ALTER TABLE public.cliente_id_cliente_seq OWNER TO postgres;
 -- Name: cliente_id_cliente_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
 --
 
-ALTER SEQUENCE public.cliente_id_cliente_seq OWNED BY public.client.id_cliente;
+ALTER SEQUENCE public.cliente_id_cliente_seq OWNED BY public.client.id_client;
+
+
+--
+-- Name: closing; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.closing (
+    id integer NOT NULL,
+    datetime timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+
+ALTER TABLE public.closing OWNER TO postgres;
+
+--
+-- Name: closing_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+CREATE SEQUENCE public.closing_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.closing_id_seq OWNER TO postgres;
+
+--
+-- Name: closing_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+--
+
+ALTER SEQUENCE public.closing_id_seq OWNED BY public.closing.id;
 
 
 --
@@ -245,10 +279,17 @@ ALTER TABLE ONLY public.bank ALTER COLUMN id_bank SET DEFAULT nextval('public.ba
 
 
 --
--- Name: client id_cliente; Type: DEFAULT; Schema: public; Owner: postgres
+-- Name: client id_client; Type: DEFAULT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.client ALTER COLUMN id_cliente SET DEFAULT nextval('public.cliente_id_cliente_seq'::regclass);
+ALTER TABLE ONLY public.client ALTER COLUMN id_client SET DEFAULT nextval('public.cliente_id_cliente_seq'::regclass);
+
+
+--
+-- Name: closing id; Type: DEFAULT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.closing ALTER COLUMN id SET DEFAULT nextval('public.closing_id_seq'::regclass);
 
 
 --
@@ -297,11 +338,20 @@ COPY public.bank_payment_method (id_bank, id_method) FROM stdin;
 -- Data for Name: client; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY public.client (id_cliente, pid, dir, name, surname, pid_prefix) FROM stdin;
+COPY public.client (id_client, pid, dir, name, surname, pid_prefix) FROM stdin;
 4	1	Panteon Nacional	Simon	Bolivar	V
 3	30604530	La Lago	Tomas	Santana	V
 1	7902245	La Lago	Miguel	Santana	V
 2	27491472	La Lago	Erika	Santana	V
+7	12345678	La Virginia	Juan	Morena	V
+\.
+
+
+--
+-- Data for Name: closing; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.closing (id, datetime) FROM stdin;
 \.
 
 
@@ -318,6 +368,7 @@ COPY public.invoice (id_invoice, id_client, date, void) FROM stdin;
 7	3	2024-04-11	f
 8	4	2024-04-09	f
 9	4	2024-04-11	f
+100	3	2024-04-09	f
 \.
 
 
@@ -340,6 +391,7 @@ COPY public.invoice_product (id_invoice, code_product, quantity) FROM stdin;
 9	09876	5
 9	24680	1
 9	12345	12
+100	12345	2
 \.
 
 
@@ -361,6 +413,7 @@ COPY public.payment (id_invoice, id_bank, amount, id_method) FROM stdin;
 8	3	137.5	2
 9	2	60.4	1
 9	2	32	2
+100	\N	4.4	3
 \.
 
 
@@ -401,14 +454,21 @@ SELECT pg_catalog.setval('public.banco_id_banco_seq', 5, true);
 -- Name: cliente_id_cliente_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('public.cliente_id_cliente_seq', 4, true);
+SELECT pg_catalog.setval('public.cliente_id_cliente_seq', 9, true);
+
+
+--
+-- Name: closing_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+--
+
+SELECT pg_catalog.setval('public.closing_id_seq', 3, true);
 
 
 --
 -- Name: factura_id_factura_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('public.factura_id_factura_seq', 9, true);
+SELECT pg_catalog.setval('public.factura_id_factura_seq', 100, true);
 
 
 --
@@ -438,7 +498,15 @@ ALTER TABLE ONLY public.bank
 --
 
 ALTER TABLE ONLY public.client
-    ADD CONSTRAINT pk_cliente PRIMARY KEY (id_cliente);
+    ADD CONSTRAINT pk_cliente PRIMARY KEY (id_client);
+
+
+--
+-- Name: closing pk_closing; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.closing
+    ADD CONSTRAINT pk_closing PRIMARY KEY (id);
 
 
 --
@@ -486,7 +554,7 @@ ALTER TABLE ONLY public.bank_payment_method
 --
 
 ALTER TABLE ONLY public.invoice
-    ADD CONSTRAINT fk_factura_cliente FOREIGN KEY (id_client) REFERENCES public.client(id_cliente);
+    ADD CONSTRAINT fk_factura_cliente FOREIGN KEY (id_client) REFERENCES public.client(id_client);
 
 
 --
