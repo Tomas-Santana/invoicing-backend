@@ -155,6 +155,12 @@ def create_invoice(invoice: dict) -> dict:
     cur = conn.cursor(cursor_factory=RealDictCursor)
     today = datetime.datetime.now().strftime('%Y-%m-%d')
     
+    # if closing happened today, return error
+    closing_time = get_closing_time(today)
+    if closing_time != "":
+        return {"message": "Closing already happened", "insert": False}
+        
+    
     
     invoice_query = sql.SQL("INSERT INTO invoice (date, id_client) VALUES (%s, %s) RETURNING id_invoice")
     
@@ -200,8 +206,7 @@ def create_invoice(invoice: dict) -> dict:
     
     cur.close()
     # conn.commit()
-    print({"message": "Invoice created successfully", "invoice_id": invoice_id})
-    return {"message": "Invoice created successfully", "invoice_id": invoice_id}
+    return {"message": "Invoice created successfully", "invoice_id": invoice_id, "insert": True}
 
 def get_invoice(invoice_id: int) -> dict:
     cur = conn.cursor(cursor_factory=RealDictCursor)
@@ -440,6 +445,27 @@ def void_invoice(invoice_id: int):
     cur.close()
     
     return {"message": "Invoice voided successfully"}
+
+def close():
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    
+    
+    # only close if closing hasn't happened today
+    today = datetime.datetime.now().strftime('%Y-%m-%d')
+    closing_time = get_closing_time(today)
+    if closing_time != "":
+        return {"message": "Closing already happened", "insert": False}
+    
+    query = sql.SQL("""
+        INSERT INTO closing (datetime) VALUES (CURRENT_TIMESTAMP)
+    """)
+    
+    cur.execute(query)
+    conn.commit()
+    cur.close()
+    
+    return {"message": "Closing done successfully", "insert": True}
+
 
     
 

@@ -191,6 +191,7 @@ def get_closing_statement():
     
     try:
         result = db.get_closing_statement(date)
+            
     except Exception as e:
         logging.error("other Error", e)
         response = jsonify({'message': 'Invalid request', 'result': []})
@@ -217,8 +218,19 @@ def void_invoice():
         return response
     
     return jsonify({'result': result})
+
+@app.post('/close')
+def close():
+    try:
+        result = db.close()
+    except Exception as e:
+        logging.error(e)
+        response = jsonify({'message': 'Invalid request', 'result': []})
+        response.status_code = 400
+        return response
     
-    
+    return jsonify({'result': result})
+            
         
 
 if __name__ == '__main__':
